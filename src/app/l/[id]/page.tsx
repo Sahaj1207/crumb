@@ -147,7 +147,13 @@ export default function ListingPage() {
                     />
                   )}
                 </div>
-                {!name.trim() && <p className="mt-2 text-sm text-ink-soft">Add your first name so staff know the bag is yours.</p>}
+                {!name.trim() ? (
+                  <p className="mt-2 text-sm text-ink-soft">Add your first name so staff know the bag is yours.</p>
+                ) : (
+                  cfg?.paypalMode === "sandbox" && (
+                    <p className="mt-2 text-sm text-ink-soft">PayPal&apos;s window may say &ldquo;Complete Purchase&rdquo;. It only places the hold; nothing is charged until pickup.</p>
+                  )
+                )}
               </>
             ) : (
               <p className="font-bold">This bag isn&apos;t available any more. <Link className="underline" href="/">See what else is left</Link>.</p>

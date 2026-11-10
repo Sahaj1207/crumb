@@ -65,9 +65,9 @@ Without a `GEMINI_API_KEY`, a deterministic mock AI is used so the whole app sti
 ## Try it (judges)
 
 1. Open the live demo. **Tonight** lists bags near PayPal HQ, San Jose (demo world, fictional shops).
-2. **For shops** → PIN `2468` → *List what's left*: upload any photo of food (a counter, a tray, your fridge) → *Turn this photo into listings* → *Publish*. Watch the AI assistants' standing orders react, including the ones that refuse and why.
-3. Open a bag from **Tonight** → *Reserve* with the PayPal sandbox buyer below. Your ticket shows a 6-digit pickup code and the hold.
-4. **For shops** → *Hand over a bag* → enter the code → photograph the open bag (take one item out first to see a partial capture) → confirm.
+2. **For shops** → PIN `2468` → *List what's left*: upload any photo of food, or tap a **sample photo** (free Unsplash images, see `public/samples/CREDITS.md`) → *Turn this photo into listings* → *Publish*. Watch the AI assistants' standing orders react, including the ones that refuse and why.
+3. Open a bag from **Tonight** → *Reserve* with the PayPal sandbox buyer below. PayPal's window says "Complete Purchase", but it only places the hold. Your ticket shows a 6-digit pickup code and the hold.
+4. **For shops** → *Hand over a bag* → enter the code → photograph the open bag, or use the **sample bag photo (2 croissants)** → confirm the partial charge.
 5. **AI agents** → pick Maya → *Save PayPal* (sandbox buyer) → ask the agent to find dinner. Or connect your own MCP client with the snippet on that page.
 6. **Ledger** shows every money movement with its reason.
 
@@ -107,7 +107,8 @@ Postgres (Drizzle)   shops, listings, reservations, mandates, events
 - Shop screens use a shared demo PIN, and an agent token can be viewed by anyone who knows a mandate's id. A real deployment would put both behind proper login (e.g. Log in with PayPal).
 - PayPal authorizations have a 3-day honor period; surplus food is collected the same evening, so re-authorization is not needed.
 - CO₂e uses a rough ~2.5 kg CO₂e per kg of food wasted (FAO order of magnitude) and is labelled as an estimate.
-- Small-ticket fees: a production version would use PayPal's micropayments pricing for sub-$10 bags.
+- Small-ticket fees: on a $2.99 sandbox capture PayPal's standard fee was $0.59; a production version would use PayPal's micropayments pricing for sub-$10 bags.
+- AI answers are cached by photo + prompt, so repeating the same sample photo is instant and doesn't use Gemini quota.
 
 ## License
 

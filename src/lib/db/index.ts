@@ -86,6 +86,11 @@ CREATE TABLE IF NOT EXISTS events (
   data jsonb,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+CREATE TABLE IF NOT EXISTS ai_cache (
+  key text PRIMARY KEY,
+  result jsonb NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
 CREATE INDEX IF NOT EXISTS listings_shop_idx ON listings (shop_id);
 CREATE INDEX IF NOT EXISTS reservations_listing_idx ON reservations (listing_id);
 CREATE INDEX IF NOT EXISTS reservations_code_idx ON reservations (pickup_code);

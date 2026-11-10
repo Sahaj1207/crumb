@@ -1,6 +1,9 @@
 import "server-only";
 import { GoogleGenAI } from "@google/genai";
+import { createHash } from "node:crypto";
+import { eq } from "drizzle-orm";
 import type { BagItem } from "./db/schema";
+import { getDb, schema as schema_ } from "./db";
 
 /**
  * All AI in Crumb goes through this file.
@@ -67,6 +70,16 @@ export async function withFallback<T>(fn: (model: string) => Promise<T>): Promis
 }
 
 async function askJson<T>(prompt: string, schema: object, images: string[] = []): Promise<T> {
+  const key = createHash("sha256").update(prompt).update(JSON.stringify(schema)).update(images.join("|")).digest("hex");
+  const db = await getDb();
+  const [hit] = await db.select().from(schema_.aiCache).where(eq(schema_.aiCache.key, key));
+  if (hit) return hit.result as T;
+  const result = await askJsonUncached<T>(prompt, schema, images);
+  await db.insert(schema_.aiCache).values({ key, result: result as object }).onConflictDoNothing();
+  return result;
+}
+
+async function askJsonUncached<T>(prompt: string, schema: object, images: string[] = []): Promise<T> {
   const parts: ({ text: string } | { inlineData: { mimeType: string; data: string } })[] = [];
   for (const img of images) {
     const { mime, data } = splitDataUrl(img);

@@ -106,6 +106,13 @@ export const events = pgTable("events", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+/** Same photo + same prompt => reuse the answer (keeps demos fast and inside free-tier AI quotas). */
+export const aiCache = pgTable("ai_cache", {
+  key: text("key").primaryKey(),
+  result: jsonb("result").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type Shop = typeof shops.$inferSelect;
 export type Listing = typeof listings.$inferSelect;
 export type Reservation = typeof reservations.$inferSelect;

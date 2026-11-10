@@ -21,10 +21,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className={`${bricolage.variable} ${atkinson.variable} ${plexMono.variable}`}>
       <body className="min-h-dvh flex flex-col">
         <header className="border-b border-line bg-flour/90 backdrop-blur sticky top-0 z-20">
-          <nav className="mx-auto max-w-5xl px-4 h-14 flex items-center gap-1 sm:gap-4">
+          <nav className="mx-auto max-w-5xl px-4 h-14 flex items-center gap-0.5 sm:gap-4">
             <Link href="/" className="flex items-center gap-2 mr-auto" aria-label="Crumb home">
               <Logo />
-              <span className="font-display font-extrabold text-xl tracking-tight">crumb</span>
+              <span className="hidden sm:inline font-display font-extrabold text-xl tracking-tight">crumb</span>
             </Link>
             <NavLink href="/">Tonight</NavLink>
             <NavLink href="/shop">For shops</NavLink>
@@ -49,7 +49,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
 
 function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <Link href={href} className="px-2 py-1.5 rounded-md text-sm sm:text-[0.95rem] font-bold text-ink-soft hover:text-ink hover:bg-paper">
+    <Link
+      href={href}
+      className="whitespace-nowrap px-1.5 sm:px-2 py-1.5 rounded-md text-[0.85rem] sm:text-[0.95rem] font-bold text-ink-soft hover:text-ink hover:bg-paper"
+    >
       {children}
     </Link>
   );

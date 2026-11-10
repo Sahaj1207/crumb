@@ -14,6 +14,22 @@ const SHOPS = [
 
 type Tab = "list" | "pickup" | "board";
 
+/** Free-licence stand-in photos (see /public/samples/CREDITS.md) for people testing without food at hand. */
+const SAMPLES: Record<string, { src: string; label: string }[]> = {
+  shop_golden_crust: [
+    { src: "/samples/pastry-basket.jpg", label: "Pastry basket" },
+    { src: "/samples/croissant-tray.jpg", label: "Croissant tray" },
+  ],
+  shop_little_saigon: [{ src: "/samples/dim-sum-table.jpg", label: "Dim sum leftovers" }],
+  shop_green_bowl: [{ src: "/samples/cafe-bowls.jpg", label: "Salad bar" }],
+};
+const SAMPLE_BAG = "/samples/bag-two-croissants.jpg";
+
+async function sampleFile(src: string) {
+  const blob = await (await fetch(src)).blob();
+  return new File([blob], src.split("/").pop()!, { type: blob.type || "image/jpeg" });
+}
+
 export default function ShopConsole() {
   const cfg = useConfig();
   const [shopId, setShopId] = useStored("crumb.shop", SHOPS[0].id);
@@ -265,6 +281,25 @@ function ListSurplus({ shop, pin, onDone }: { shop: (typeof SHOPS)[number]; pin:
           )}
         </button>
         <input ref={fileRef} type="file" accept="image/*" capture="environment" className="sr-only" onChange={(e) => pick(e.target.files?.[0])} />
+        {(SAMPLES[shop.id] ?? []).length > 0 && (
+          <div className="mt-3">
+            <p className="text-sm text-ink-soft">No food to hand? Try a sample photo:</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {SAMPLES[shop.id].map((s) => (
+                <button
+                  key={s.src}
+                  type="button"
+                  onClick={async () => pick(await sampleFile(s.src))}
+                  className="flex items-center gap-2 rounded-xl border-2 border-line bg-paper pr-3 hover:border-ink"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={s.src} alt="" className="w-12 h-12 rounded-l-[10px] object-cover" />
+                  <span className="text-sm font-bold">{s.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <label className="block mt-4 text-sm font-bold" htmlFor="note">
           Anything AI should know? <span className="font-normal text-ink-soft">(optional)</span>
         </label>
@@ -547,6 +582,14 @@ function Pickup({ shopId, pin }: { shopId: string; pin: string }) {
                 Skip check, charge {money(res.amountCents)}
               </Button>
             </div>
+            <button
+              type="button"
+              className="mt-3 text-sm underline text-ink-soft hover:text-ink disabled:opacity-50"
+              disabled={busy === "check"}
+              onClick={async () => runCheck(await sampleFile(SAMPLE_BAG))}
+            >
+              No bag to hand? Use a sample photo (2 croissants)
+            </button>
             <input ref={fileRef} type="file" accept="image/*" capture="environment" className="sr-only" onChange={(e) => runCheck(e.target.files?.[0])} />
           </>
         )}
