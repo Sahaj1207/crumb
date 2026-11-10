@@ -97,7 +97,8 @@ const holder = globalThis as unknown as { __crumbDb?: Holder };
 holder.__crumbDb ??= {};
 
 async function connect(): Promise<DB> {
-  const url = process.env.DATABASE_URL;
+  // DATABASE_URL (Neon / manual) or POSTGRES_URL (Vercel's Supabase integration)
+  const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
   if (url) {
     const { default: postgres } = await import("postgres");
     const { drizzle } = await import("drizzle-orm/postgres-js");
