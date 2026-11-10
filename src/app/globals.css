@@ -1,0 +1,131 @@
+@import "tailwindcss";
+
+/* Crumb tokens — closing time at a small food shop. */
+@theme {
+  --color-flour: #f3f4f0;
+  --color-paper: #ffffff;
+  --color-ink: #16201c;
+  --color-ink-soft: #4a5550;
+  --color-line: #d9ddd6;
+  --color-sticker: #ffe14d;
+  --color-sticker-ink: #2b2400;
+  --color-kraft: #b98b5a;
+  --color-kraft-soft: #ead9c4;
+  --color-hold: #2f4fc9;
+  --color-hold-soft: #e3e8fb;
+  --color-charged: #1e7a4c;
+  --color-charged-soft: #ddf0e5;
+  --color-released: #7d838c;
+  --color-alert: #c63c25;
+  --color-alert-soft: #fbe4df;
+
+  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-atkinson), ui-sans-serif, system-ui, sans-serif;
+  --font-receipt: var(--font-plex-mono), ui-monospace, monospace;
+}
+
+html {
+  background: var(--color-flour);
+  color: var(--color-ink);
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+  line-height: 1.08;
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-hold);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* The yellow markdown sticker: the one loud thing in the interface. */
+.sticker {
+  background: var(--color-sticker);
+  color: var(--color-sticker-ink);
+  font-family: var(--font-display);
+  font-weight: 800;
+  border-radius: 999px;
+  box-shadow:
+    inset 0 0 0 2px rgba(43, 36, 0, 0.12),
+    0 1px 0 rgba(22, 32, 28, 0.15);
+  transform: rotate(-6deg);
+  display: inline-grid;
+  place-items: center;
+  text-align: center;
+}
+
+/* Till receipt: perforated bottom edge, monospace. */
+.receipt {
+  font-family: var(--font-receipt);
+  background: var(--color-paper);
+  position: relative;
+  padding-bottom: 18px;
+  --tooth: 8px;
+  -webkit-mask:
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / calc(var(--tooth) * 2) var(--tooth) repeat-x,
+    linear-gradient(#000 0 0) top / 100% calc(100% - var(--tooth)) no-repeat;
+  mask:
+    conic-gradient(from -45deg at bottom, #0000, #000 1deg 89deg, #0000 90deg) bottom / calc(var(--tooth) * 2) var(--tooth) repeat-x,
+    linear-gradient(#000 0 0) top / 100% calc(100% - var(--tooth)) no-repeat;
+}
+
+.kraft {
+  background-color: var(--color-kraft-soft);
+  background-image: radial-gradient(rgba(122, 86, 46, 0.12) 1px, transparent 1px);
+  background-size: 6px 6px;
+}
+
+@keyframes drop-in {
+  0% {
+    transform: translateY(-10px) rotate(-14deg) scale(0.9);
+    opacity: 0;
+  }
+  70% {
+    transform: translateY(0) rotate(-4deg) scale(1.04);
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(-6deg) scale(1);
+  }
+}
+
+.sticker-drop {
+  animation: drop-in 420ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+@keyframes row-flash {
+  from {
+    background: var(--color-sticker);
+  }
+  to {
+    background: transparent;
+  }
+}
+
+.row-new {
+  animation: row-flash 1.6s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sticker-drop,
+  .row-new {
+    animation: none;
+  }
+}
