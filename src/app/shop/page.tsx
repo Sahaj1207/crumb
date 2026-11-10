@@ -25,9 +25,15 @@ const SAMPLES: Record<string, { src: string; label: string }[]> = {
 };
 const SAMPLE_BAG = "/samples/bag-two-croissants.jpg";
 
-async function sampleFile(src: string) {
+/** Sample photos are sent byte-for-byte (no re-compression) so every browser hits the same cached AI answer. */
+async function sampleDataUrl(src: string): Promise<string> {
   const blob = await (await fetch(src)).blob();
-  return new File([blob], src.split("/").pop()!, { type: blob.type || "image/jpeg" });
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result).replace(/^data:[^;]*;/, "data:image/jpeg;"));
+    r.onerror = () => reject(new Error("Could not load the sample photo"));
+    r.readAsDataURL(blob);
+  });
 }
 
 export default function ShopConsole() {
@@ -152,10 +158,10 @@ function ListSurplus({ shop, pin, onDone }: { shop: (typeof SHOPS)[number]; pin:
     return () => clearInterval(t);
   }, [phase]);
 
-  async function pick(file?: File) {
+  async function pick(file?: File | string) {
     if (!file) return;
     setError(null);
-    setPhoto(await fileToDataUrl(file));
+    setPhoto(typeof file === "string" ? file : await fileToDataUrl(file));
     setProposal(null);
     setPhase("idle");
   }
@@ -289,7 +295,7 @@ function ListSurplus({ shop, pin, onDone }: { shop: (typeof SHOPS)[number]; pin:
                 <button
                   key={s.src}
                   type="button"
-                  onClick={async () => pick(await sampleFile(s.src))}
+                  onClick={async () => pick(await sampleDataUrl(s.src))}
                   className="flex items-center gap-2 rounded-xl border-2 border-line bg-paper pr-3 hover:border-ink"
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -480,9 +486,9 @@ function Pickup({ shopId, pin }: { shopId: string; pin: string }) {
     }
   }
 
-  async function runCheck(file?: File) {
+  async function runCheck(file?: File | string) {
     if (!file || !res) return;
-    const p = await fileToDataUrl(file, 1024);
+    const p = typeof file === "string" ? file : await fileToDataUrl(file, 1024);
     setPhoto(p);
     setBusy("check");
     setError(null);
@@ -586,7 +592,7 @@ function Pickup({ shopId, pin }: { shopId: string; pin: string }) {
               type="button"
               className="mt-3 text-sm underline text-ink-soft hover:text-ink disabled:opacity-50"
               disabled={busy === "check"}
-              onClick={async () => runCheck(await sampleFile(SAMPLE_BAG))}
+              onClick={async () => runCheck(await sampleDataUrl(SAMPLE_BAG))}
             >
               No bag to hand? Use a sample photo (2 croissants)
             </button>
