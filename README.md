@@ -71,7 +71,7 @@ Without a `GEMINI_API_KEY`, a deterministic mock AI is used so the whole app sti
 5. **AI agents** → pick Maya → *Save PayPal* (sandbox buyer) → ask the agent to find dinner. Or connect your own MCP client with the snippet on that page.
 6. **Ledger** shows every money movement with its reason.
 
-**PayPal sandbox buyer for testing:** `<add sandbox buyer email>` / `<add sandbox password>` (sandbox only, no real funds).
+**PayPal sandbox buyer for testing:** `sb-c43r4l53836201@personal.example.com` / `JD{q4y8&` (sandbox only, no real funds).
 
 ## Run it locally
 

@@ -66,7 +66,7 @@ paypal-orders-v2, paypal-payments-v2, paypal-vault-v3, paypal-js-sdk-v6, paypal-
 
 ## Testing instructions for judges
 1. Open https://crumb-lyart.vercel.app → **For shops** → PIN `2468` → *List what's left* → pick a **sample photo** → *Turn this photo into listings* → *Publish*.
-2. Open a bag from **Tonight** → enter a name → PayPal → log in with the sandbox customer: `<sandbox personal email>` / `<sandbox password>` → approve. You get a ticket with a pickup code.
+2. Open a bag from **Tonight** → enter a name → PayPal → log in with the sandbox customer: `sb-c43r4l53836201@personal.example.com` / `JD{q4y8&` → approve. You get a ticket with a pickup code.
 3. **For shops** → *Hand over a bag* → enter the code → *Use a sample photo (2 croissants)* → confirm the partial charge.
 4. **AI agents** → Maya → *Save PayPal* (same sandbox customer) → ask the agent to find dinner. Or connect your own MCP client with the snippet on that page.
 5. **Ledger** shows every money movement and why.
