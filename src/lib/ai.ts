@@ -34,10 +34,12 @@ function splitDataUrl(dataUrl: string): { mime: string; data: string } {
 /** Models to try in order. Free-tier models get "high demand" 503s; a demo must not die on one. */
 export const MODEL_CHAIN = [
   MODEL,
-  ...(process.env.GEMINI_FALLBACK_MODELS ?? "gemini-3.5-flash,gemini-3.1-flash-lite").split(",").map((s) => s.trim()),
+  ...(process.env.GEMINI_FALLBACK_MODELS ?? "gemini-3.5-flash,gemini-3.1-flash-lite,gemini-3.7-flash,gemini-3.5-flash-lite").split(",").map((s) => s.trim()),
 ].filter((m, i, a) => m && a.indexOf(m) === i);
 
-const ATTEMPT_TIMEOUT_MS = 25_000;
+const ATTEMPT_TIMEOUT_MS = 20_000;
+/** Stay inside the 60 s serverless limit even when several models are busy. */
+const TOTAL_BUDGET_MS = 50_000;
 
 function isTransient(e: unknown) {
   const msg = String((e as Error)?.message ?? e);
@@ -57,9 +59,12 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 /** One attempt per model, with a hard timeout; a busy, retired or hanging model falls through to the next. */
 export async function withFallback<T>(fn: (model: string) => Promise<T>): Promise<T> {
   let last: unknown;
+  const started = Date.now();
   for (const model of MODEL_CHAIN) {
+    const left = TOTAL_BUDGET_MS - (Date.now() - started);
+    if (left < 4_000) break;
     try {
-      return await withTimeout(fn(model), ATTEMPT_TIMEOUT_MS);
+      return await withTimeout(fn(model), Math.min(ATTEMPT_TIMEOUT_MS, left));
     } catch (e) {
       last = e;
       console.warn(`[ai] ${model} failed: ${String((e as Error)?.message ?? e).slice(0, 140)}`);
