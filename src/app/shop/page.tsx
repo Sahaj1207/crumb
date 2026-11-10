@@ -5,6 +5,8 @@ import { api, ApiError, fileToDataUrl, money, useConfig, usePoll, useStored } fr
 import { prettyTime } from "@/lib/time";
 import { Button, MoneyReceipt, Notice, StatusPill, Sticker, ModeBadge } from "@/components/bits";
 import { EventFeed, type FeedEvent } from "@/components/event-feed";
+import { useSearchParams } from "next/navigation";
+import { markGuide } from "@/lib/guide";
 
 const SHOPS = [
   { id: "shop_golden_crust", name: "Golden Crust Bakery", closesAt: "20:00", minPricePct: 30 },
@@ -36,11 +38,22 @@ async function sampleDataUrl(src: string): Promise<string> {
   });
 }
 
-export default function ShopConsole() {
+/** Tour links can open a tab, fill the demo PIN and pre-fill a pickup code: /shop?tab=pickup&pin=2468&code=123456 */
+export default function ShopPage() {
+  const params = useSearchParams();
+  const t = params.get("tab");
+  const tab: Tab = t === "pickup" || t === "board" ? t : "list";
+  return <ShopConsole key={params.toString()} initialTab={tab} pinFromLink={params.get("pin")} codeFromLink={params.get("code")} />;
+}
+
+function ShopConsole({ initialTab, pinFromLink, codeFromLink }: { initialTab: Tab; pinFromLink: string | null; codeFromLink: string | null }) {
   const cfg = useConfig();
   const [shopId, setShopId] = useStored("crumb.shop", SHOPS[0].id);
   const [pin, setPin] = useStored("crumb.pin", "");
-  const [tab, setTab] = useState<Tab>("list");
+  const [tab, setTab] = useState<Tab>(initialTab);
+  useEffect(() => {
+    if (pinFromLink && !pin) setPin(pinFromLink);
+  }, [pinFromLink, pin, setPin]);
   const shop = SHOPS.find((s) => s.id === shopId) ?? SHOPS[0];
 
   return (
@@ -104,7 +117,7 @@ export default function ShopConsole() {
 
       <div className="pt-6">
         {tab === "list" && <ListSurplus shop={shop} pin={pin} onDone={() => setTab("board")} />}
-        {tab === "pickup" && <Pickup shopId={shop.id} pin={pin} />}
+        {tab === "pickup" && <Pickup shopId={shop.id} pin={pin} initialCode={codeFromLink ?? ""} />}
         {tab === "board" && <Board shopId={shop.id} pin={pin} />}
       </div>
     </div>
@@ -193,6 +206,7 @@ function ListSurplus({ shop, pin, onDone }: { shop: (typeof SHOPS)[number]; pin:
       });
       setPublishMs(performance.now() - t0);
       setTitles(Object.fromEntries(r.listings.map((l) => [l.id, l.title])));
+      markGuide(1);
       setAgentResults(r.agentResults);
       setPhase("published");
     } catch (e) {
@@ -448,12 +462,13 @@ type BagCheck = {
   summary: string;
 };
 
-function Pickup({ shopId, pin }: { shopId: string; pin: string }) {
-  const [code, setCode] = useState("");
+function Pickup({ shopId, pin, initialCode }: { shopId: string; pin: string; initialCode: string }) {
+  const [code, setCode] = useState(initialCode.replace(/\D/g, "").slice(0, 6));
   const [res, setRes] = useState<Res | null>(null);
   const [listing, setListing] = useState<{ title: string; contents: { name: string; count: number }[] } | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
   const [check, setCheck] = useState<BagCheck | null>(null);
+  const [manual, setManual] = useState(false);
   const [amount, setAmount] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -495,8 +510,10 @@ function Pickup({ shopId, pin }: { shopId: string; pin: string }) {
     try {
       const r = await api<{ bagCheck: BagCheck; proposedCents: number }>(`/api/reservations/${res.id}/bagcheck`, { body: { photo: p }, pin });
       setCheck(r.bagCheck);
+      setManual(false);
       setAmount(r.proposedCents);
     } catch (e) {
+      if (e instanceof ApiError && e.code === "ai_unavailable") setManual(true);
       setError((e as Error).message);
     } finally {
       setBusy(null);
@@ -510,6 +527,7 @@ function Pickup({ shopId, pin }: { shopId: string; pin: string }) {
     try {
       const r = await api<{ reservation: Res }>(`/api/reservations/${res.id}/handover`, { body: { amountCents: cents }, pin });
       setRes(r.reservation);
+      markGuide(3);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -607,10 +625,19 @@ function Pickup({ shopId, pin }: { shopId: string; pin: string }) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={photo} alt="Photo of the open bag" className="w-full max-h-72 object-cover rounded-2xl" />
         )}
-        {check && !done && (
+        {(check || manual) && !done && (
           <div className="mt-4 rounded-2xl bg-paper border-2 border-ink p-5">
-            <p className="font-bold text-lg">{check.summary}</p>
-            <p className="text-sm text-ink-soft">AI confidence {Math.round(check.confidence * 100)}%. You have the final say.</p>
+            {check ? (
+              <>
+                <p className="font-bold text-lg">{check.summary}</p>
+                <p className="text-sm text-ink-soft">AI confidence {Math.round(check.confidence * 100)}%. You have the final say.</p>
+              </>
+            ) : (
+              <>
+                <p className="font-bold text-lg">Count the bag yourself</p>
+                <p className="text-sm text-ink-soft">The AI check is busy. Lower the amount if anything listed is missing.</p>
+              </>
+            )}
             <label className="block mt-4 text-sm font-bold" htmlFor="amount">
               Charge the customer
             </label>

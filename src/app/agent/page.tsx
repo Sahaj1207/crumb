@@ -4,6 +4,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { api, money, useConfig, usePoll } from "@/lib/client";
 import { Button, Notice, ModeBadge } from "@/components/bits";
 import { PayPalSaveButton } from "@/components/paypal-hold-button";
+import { markGuide } from "@/lib/guide";
 
 type MandateRow = {
   id: string;
@@ -189,6 +190,7 @@ function ChatWithAgent({ m }: { m: MandateFull }) {
         body: { token: m.token, messages: next.map(({ role, text }) => ({ role, text })) },
       });
       setLines([...next, { role: "assistant", text: r.reply, steps: r.steps }]);
+      markGuide(4);
     } catch (e) {
       setLines([...next, { role: "assistant", text: `Error: ${(e as Error).message}` }]);
     } finally {

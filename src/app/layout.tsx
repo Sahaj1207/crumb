@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Atkinson_Hyperlegible, IBM_Plex_Mono } from "next/font/google";
 import Link from "next/link";
 import { Suspense } from "react";
+import { GuidePanel, GuideRestartLink } from "@/components/guide";
 import "./globals.css";
 
 const bricolage = Bricolage_Grotesque({ variable: "--font-bricolage", subsets: ["latin"], weight: ["500", "700", "800"] });
@@ -35,11 +36,15 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <main className="flex-1">
           <Suspense fallback={<p className="p-10 text-center text-ink-soft">Loading…</p>}>{children}</Suspense>
         </main>
-        <footer className="border-t border-line text-sm text-ink-soft">
+        <Suspense fallback={null}>
+          <GuidePanel />
+        </Suspense>
+        <footer className="border-t border-line text-sm text-ink-soft pb-24 sm:pb-0">
           <div className="mx-auto max-w-5xl px-4 py-6 flex flex-wrap gap-x-6 gap-y-2">
             <span>Built for the PayPal AI Hackathon 2026. PayPal sandbox only — no real money moves.</span>
             <a className="underline" href="/.well-known/ucp">UCP profile</a>
             <Link className="underline" href="/agent#connect">MCP server</Link>
+            <GuideRestartLink />
           </div>
         </footer>
       </body>

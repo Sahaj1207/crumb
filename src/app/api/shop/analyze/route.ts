@@ -1,5 +1,5 @@
 import { route, requireShop, body } from "@/lib/api";
-import { listFromPhoto } from "@/lib/ai";
+import { listFromPhoto, isAiUnavailable } from "@/lib/ai";
 import { getShop, logEvent, CrumbError } from "@/lib/core";
 
 export const maxDuration = 60;
@@ -11,7 +11,14 @@ export const POST = route(async (req: Request) => {
   if (photo.length > 6_000_000) throw new CrumbError("Photo too large — please resize to under ~4 MB");
   const shop = await getShop(shopId);
   const started = Date.now();
-  const proposal = await listFromPhoto(photo, shop, note);
+  let proposal;
+  try {
+    proposal = await listFromPhoto(photo, shop, note);
+  } catch (e) {
+    if (isAiUnavailable(e))
+      throw new CrumbError("The AI is busy right now. Try again in a minute, or use one of the sample photos (they're instant).", 503, "ai_unavailable");
+    throw e;
+  }
   await logEvent({
     actor: "ai",
     type: "listing.proposed",

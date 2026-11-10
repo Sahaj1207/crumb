@@ -57,11 +57,15 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 }
 
 /** One attempt per model, with a hard timeout; a busy, retired or hanging model falls through to the next. */
-export async function withFallback<T>(fn: (model: string) => Promise<T>): Promise<T> {
+/** After every model failed, skip Gemini briefly so fallbacks answer instantly instead of re-waiting. */
+let coolDownUntil = 0;
+
+export async function withFallback<T>(fn: (model: string) => Promise<T>, budgetMs = TOTAL_BUDGET_MS): Promise<T> {
+  if (Date.now() < coolDownUntil) throw new Error("The AI service is busy right now (cooling down). Please try again in a minute.");
   let last: unknown;
   const started = Date.now();
   for (const model of MODEL_CHAIN) {
-    const left = TOTAL_BUDGET_MS - (Date.now() - started);
+    const left = budgetMs - (Date.now() - started);
     if (left < 4_000) break;
     try {
       return await withTimeout(fn(model), Math.min(ATTEMPT_TIMEOUT_MS, left));
@@ -71,6 +75,7 @@ export async function withFallback<T>(fn: (model: string) => Promise<T>): Promis
       if (!isTransient(e)) throw e;
     }
   }
+  coolDownUntil = Date.now() + 60_000;
   throw new Error(`The AI service is busy right now (${String((last as Error)?.message ?? last).slice(0, 120)}). Please try again in a minute.`);
 }
 
@@ -229,6 +234,10 @@ const bagSchema = {
   required: ["found", "confidence", "summary"],
 };
 
+export function isAiUnavailable(e: unknown) {
+  return /AI service is busy|timed out|quota|RESOURCE_EXHAUSTED|UNAVAILABLE|high demand/i.test(String((e as Error)?.message ?? e));
+}
+
 export async function checkBag(
   photo: string,
   expected: { name: string; count: number }[],
@@ -274,6 +283,17 @@ export async function judgeFit(
 ): Promise<{ fits: boolean; reason: string }> {
   if (!preferences.trim()) return { fits: true, reason: "No food preferences set." };
   if (AI_MODE === "mock") return mockFit(preferences, listing);
+  try {
+    return await askFit(preferences, listing);
+  } catch (e) {
+    // Gemini busy / out of quota: fall back to a conservative keyword check, and say so.
+    console.warn("[ai] judgeFit fallback:", (e as Error).message.slice(0, 100));
+    const r = mockFit(preferences, listing);
+    return { fits: r.fits, reason: `${r.reason} (rule-based check; AI busy)` };
+  }
+}
+
+async function askFit(preferences: string, listing: { title: string; contents: BagItem[]; tags: string[] }): Promise<{ fits: boolean; reason: string }> {
   return askJson(
     `A buyer told their AI assistant: "${preferences}".
 Surplus bag: "${listing.title}" containing ${listing.contents

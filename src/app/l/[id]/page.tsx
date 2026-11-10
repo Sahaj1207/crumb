@@ -6,6 +6,7 @@ import { api, money, useConfig, usePoll, useStored, timeLeftLabel } from "@/lib/
 import { prettyTime } from "@/lib/time";
 import { Sticker, StatusPill, BagGlyph, Notice } from "@/components/bits";
 import { PayPalHoldButton } from "@/components/paypal-hold-button";
+import { markGuide } from "@/lib/guide";
 
 type Data = {
   listing: {
@@ -134,7 +135,8 @@ export default function ListingPage() {
                       onApproved={async (orderId) => {
                         setBusy(true);
                         const reservationId = resRef.current || sessionStorage.getItem(`crumb.order.${orderId}`)!;
-                        await api(`/api/reservations/${reservationId}/approve`, { body: { orderId } });
+                        const ok = await api<{ reservation: { pickupCode: string } }>(`/api/reservations/${reservationId}/approve`, { body: { orderId } });
+                        markGuide(2, { reservationId, pickupCode: ok.reservation.pickupCode });
                         router.push(`/r/${reservationId}`);
                       }}
                       onCancel={() => {

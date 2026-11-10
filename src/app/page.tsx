@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePoll, useConfig, timeLeftLabel, money } from "@/lib/client";
 import { Sticker, StatusPill, BagGlyph, ModeBadge } from "@/components/bits";
+import { GuideWelcome } from "@/components/guide";
 
 type Listing = {
   id: string;
@@ -44,6 +45,7 @@ export default function Tonight() {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:py-12">
+      <GuideWelcome />
       <section className="grid gap-6 sm:grid-cols-[1.4fr_1fr] sm:items-end mb-10">
         <div>
           <h1 className="text-4xl sm:text-6xl font-extrabold">Tonight&apos;s leftovers, a short walk away.</h1>

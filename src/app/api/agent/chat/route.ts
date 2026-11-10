@@ -1,7 +1,7 @@
 import { GoogleGenAI, type Content, type FunctionDeclaration } from "@google/genai";
 import { route, body } from "@/lib/api";
 import { mandateByToken, logEvent } from "@/lib/core";
-import { AI_MODE, withFallback } from "@/lib/ai";
+import { AI_MODE, isAiUnavailable, withFallback } from "@/lib/ai";
 import * as tools from "@/lib/agent-tools";
 import type { Mandate } from "@/lib/db/schema";
 
@@ -73,8 +73,9 @@ export const POST = route(async (req: Request) => {
     return result;
   };
 
-  if (AI_MODE === "mock") {
-    // Deterministic stand-in: find → check → reserve the first bag that passes every rule.
+  // Rule-based planner: find → check → reserve the first bag that passes every rule.
+  // Used without a Gemini key, and as an honest fallback when Gemini is busy or out of quota.
+  const planner = async (note = "") => {
     const found = (await call("find_surplus_food", {})) as Awaited<ReturnType<typeof tools.findSurplusFood>>;
     for (const r of found.results.filter((x) => x.within_your_radius)) {
       const chk = (await call("check_rules", { listing_id: r.listing_id })) as Awaited<ReturnType<typeof tools.checkMandate>>;
@@ -82,14 +83,24 @@ export const POST = route(async (req: Request) => {
         const res = (await call("reserve_bag", { listing_id: r.listing_id })) as { reserved: boolean; pickup_code?: string; pickup_until?: string };
         if (res.reserved)
           return Response.json({
-            reply: `Done — I reserved "${r.title}" at ${r.shop} for ${r.price}. It's a hold on your PayPal, not a charge. Pickup code ${res.pickup_code}, collect by ${res.pickup_until}.`,
+            reply: `${note}Done. I reserved "${r.title}" at ${r.shop} for ${r.price}. It's a hold on your PayPal, not a charge. Pickup code ${res.pickup_code}, collect by ${res.pickup_until}.`,
             steps,
           });
       }
     }
-    return Response.json({ reply: "Nothing nearby fits your rules right now, so I didn't reserve anything.", steps });
+    return Response.json({ reply: `${note}Nothing nearby fits your rules right now, so I didn't reserve anything.`, steps });
+  };
+
+  if (AI_MODE === "mock") return planner();
+  try {
+    return await geminiAgent();
+  } catch (e) {
+    if (!isAiUnavailable(e) || steps.some((s) => s.tool === "reserve_bag")) throw e;
+    return planner("Gemini is busy right now, so I used the rule-based planner (same rules, checked in code). ");
   }
 
+  async function geminiAgent() {
+  const started = Date.now();
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
   const contents: Content[] = messages.slice(-12).map((x) => ({ role: x.role === "assistant" ? "model" : "user", parts: [{ text: x.text }] }));
   const system = `You are ${m.agentName}, shopping for ${m.buyerName} on Crumb (same-day surplus food from local shops near PayPal HQ, San Jose).
@@ -99,12 +110,17 @@ After reserving, tell them the pickup code and time. Be brief and friendly. Pric
 Reply in plain text only: no markdown, no asterisks, no emoji. Short lines are fine.`;
 
   for (let turn = 0; turn < 6; turn++) {
-    const res = await withFallback((model) =>
-      ai.models.generateContent({
-        model,
-        contents,
-        config: { systemInstruction: system, tools: [{ functionDeclarations: DECLS }], temperature: 0.3 },
-      }),
+    // Whole conversation must finish inside the 60 s function limit (planner fallback needs a few seconds too).
+    const left = 30_000 - (Date.now() - started);
+    if (left < 5_000) throw new Error("AI service is busy: out of time");
+    const res = await withFallback(
+      (model) =>
+        ai.models.generateContent({
+          model,
+          contents,
+          config: { systemInstruction: system, tools: [{ functionDeclarations: DECLS }], temperature: 0.3 },
+        }),
+      left,
     );
     const calls = res.functionCalls ?? [];
     if (!calls.length) {
@@ -121,5 +137,6 @@ Reply in plain text only: no markdown, no asterisks, no emoji. Short lines are f
     }
     contents.push({ role: "user", parts });
   }
-  return Response.json({ reply: "I ran out of steps — please try a simpler request.", steps });
+  return Response.json({ reply: "I ran out of steps. Please try a simpler request.", steps });
+  }
 });
