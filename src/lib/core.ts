@@ -334,13 +334,14 @@ export async function runStandingOrders(listingId: string) {
     .from(mandates)
     .where(and(eq(mandates.active, true), eq(mandates.standingOrder, true)));
   const results: { mandateId: string; buyerName: string; agentName: string; reserved: boolean; reason?: string }[] = [];
-  for (const m of all) {
+  // All agents decide in parallel (inventory is taken atomically, so the fastest fitting agent wins).
+  await Promise.all(all.map(async (m) => {
     // one bag per mandate per listing
     const existing = await db
       .select({ id: reservations.id })
       .from(reservations)
       .where(and(eq(reservations.mandateId, m.id), eq(reservations.listingId, listingId), inArray(reservations.status, ["held", "captured"])));
-    if (existing.length) continue;
+    if (existing.length) return;
     try {
       const res = await agentReserve(m, listingId, "standing_order");
       results.push({
@@ -358,8 +359,8 @@ export async function runStandingOrders(listingId: string) {
     } catch (err) {
       results.push({ mandateId: m.id, buyerName: m.buyerName, agentName: m.agentName, reserved: false, reason: (err as Error).message });
     }
-  }
-  return results;
+  }));
+  return results.sort((a, b) => Number(b.reserved) - Number(a.reserved) || a.buyerName.localeCompare(b.buyerName));
 }
 
 // ------------------------------------------------------------------ pickup: AI bag check -> person confirms -> capture

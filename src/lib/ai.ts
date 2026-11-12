@@ -79,29 +79,31 @@ export async function withFallback<T>(fn: (model: string) => Promise<T>, budgetM
   throw new Error(`The AI service is busy right now (${String((last as Error)?.message ?? last).slice(0, 120)}). Please try again in a minute.`);
 }
 
-async function askJson<T>(prompt: string, schema: object, images: string[] = []): Promise<T> {
+async function askJson<T>(prompt: string, schema: object, images: string[] = [], budgetMs?: number): Promise<T> {
   const key = createHash("sha256").update(prompt).update(JSON.stringify(schema)).update(images.join("|")).digest("hex");
   const db = await getDb();
   const [hit] = await db.select().from(schema_.aiCache).where(eq(schema_.aiCache.key, key));
   if (hit) return hit.result as T;
-  const result = await askJsonUncached<T>(prompt, schema, images);
+  const result = await askJsonUncached<T>(prompt, schema, images, budgetMs);
   await db.insert(schema_.aiCache).values({ key, result: result as object }).onConflictDoNothing();
   return result;
 }
 
-async function askJsonUncached<T>(prompt: string, schema: object, images: string[] = []): Promise<T> {
+async function askJsonUncached<T>(prompt: string, schema: object, images: string[] = [], budgetMs?: number): Promise<T> {
   const parts: ({ text: string } | { inlineData: { mimeType: string; data: string } })[] = [];
   for (const img of images) {
     const { mime, data } = splitDataUrl(img);
     parts.push({ inlineData: { mimeType: mime, data } });
   }
   parts.push({ text: prompt });
-  const res = await withFallback((model) =>
-    ai().models.generateContent({
-      model,
-      contents: [{ role: "user", parts }],
-      config: { responseMimeType: "application/json", responseJsonSchema: schema, temperature: 0.2 },
-    }),
+  const res = await withFallback(
+    (model) =>
+      ai().models.generateContent({
+        model,
+        contents: [{ role: "user", parts }],
+        config: { responseMimeType: "application/json", responseJsonSchema: schema, temperature: 0.2 },
+      }),
+    budgetMs,
   );
   const text = res.text ?? "";
   try {
@@ -305,6 +307,8 @@ Would this bag respect the buyer's preferences and restrictions? Treat allergies
       properties: { fits: { type: "boolean" }, reason: { type: "string" } },
       required: ["fits", "reason"],
     },
+    [],
+    9_000, // standing orders run while the shop waits: short budget, then the labelled keyword fallback
   );
 }
 
