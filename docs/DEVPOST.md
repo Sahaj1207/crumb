@@ -9,7 +9,7 @@ Paste each section into the matching Devpost field. Replace anything in <angle b
 **Links**
 - Live demo: https://crumb-lyart.vercel.app (shop staff PIN: 2468)
 - Code: https://github.com/Sahaj1207/crumb (MIT)
-- Video: <YouTube link>
+- Video: https://youtu.be/1eq4joiran8
 
 ---
 

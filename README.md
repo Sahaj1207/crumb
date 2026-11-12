@@ -5,7 +5,8 @@
 Built for the **PayPal AI Hackathon 2026** (Devpost). PayPal sandbox only — no real money moves.
 
 - Live demo: **https://crumb-lyart.vercel.app**
-- Demo video (under 3 min): `<add YouTube link>`
+- Demo video (1:53): **https://youtu.be/1eq4joiran8**
+- Devpost: https://devpost.com/software/crumb-bygxu2
 - Staff PIN for the shop screens: **2468**
 
 ---
